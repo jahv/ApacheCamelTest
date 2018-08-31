@@ -14,6 +14,7 @@ import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.jackson.JacksonDataFormat;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -48,6 +49,9 @@ public class MyRouteBuilder extends RouteBuilder {
         from("timer:simple?period=1000")
 //                .process(new Producer())
 //                .to("direct:processMessage")
+                .process(exchange -> {
+                    exchange.getOut().setHeader("Country", "MX");
+                })
                 .to("direct:countriesWSRest")
                 .end();
 
@@ -57,9 +61,10 @@ public class MyRouteBuilder extends RouteBuilder {
 
         from("direct:countriesWSRest")
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
-                .to("http://services.groupkt.com/country/get/all")
-                .unmarshal(jacksonDataFormat)
-                .process(new CountryProcess())
+                .recipientList(simple("http://services.groupkt.com/country/get/iso2code/${header.Country}"))
+//                .unmarshal(jacksonDataFormat)
+//                .process(new CountryProcess())
+                .log("${body}")
                 .end();
     }
 
