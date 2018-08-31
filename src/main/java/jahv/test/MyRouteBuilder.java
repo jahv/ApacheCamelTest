@@ -1,6 +1,7 @@
 package jahv.test;
 
 import jahv.test.pojos.CountriesResponse;
+import jahv.test.pojos.Result;
 import jahv.test.process.Consumer;
 import jahv.test.process.CountryProcess;
 import jahv.test.process.Producer;
@@ -49,9 +50,6 @@ public class MyRouteBuilder extends RouteBuilder {
         from("timer:simple?period=1000")
 //                .process(new Producer())
 //                .to("direct:processMessage")
-                .process(exchange -> {
-                    exchange.getOut().setHeader("Country", "MX");
-                })
                 .to("direct:countriesWSRest")
                 .end();
 
@@ -61,11 +59,28 @@ public class MyRouteBuilder extends RouteBuilder {
 
         from("direct:countriesWSRest")
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
-                .recipientList(simple("http://services.groupkt.com/country/get/iso2code/${header.Country}"))
-//                .unmarshal(jacksonDataFormat)
-//                .process(new CountryProcess())
-                .log("${body}")
+                .recipientList(simple("http://services.groupkt.com/country/get/all"))
+                .unmarshal(jacksonDataFormat)
+                .process(new CountryProcess())
+                .log("-------------------------------------")
+                .choice()//Conditions
+                    .when(body().isNull())
+                        .log("Body NULL")
+                    .otherwise()
+                        .split(body())//Separa el contenido y dispara un nuevo flujo por cada entrada
+                        .to("direct:processResultWS")
+                .endChoice()
                 .end();
+
+        from("direct:processResultWS")
+                .process(exchange -> {
+                    Result result = exchange.getIn().getBody(Result.class);
+                    if(result != null) {
+                        System.out.println("Result: " + result.getName());
+                    }
+                })
+                .end();
+
     }
 
 }
