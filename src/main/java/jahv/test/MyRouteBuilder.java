@@ -37,15 +37,26 @@ public class MyRouteBuilder extends RouteBuilder {
 
 
         from("timer:simple?period=1000")
-                .log("Sending message...")
-                .setHeader("Header1", constant("HeaderValue"))
-                .setBody(constant("Input Message"))
+                //Instead of using this, we can use a process, it needs a processor, I used a lamba
+
+//                .log("Sending message...")
+//                .setHeader("Header1", constant("HeaderValue"))
+//                .setBody(constant("Input Message"))
+                .process(exchange -> {
+                    System.out.println("Body in: " + exchange.getIn().getBody());
+                    exchange.getOut().setBody("Out body");
+                    exchange.getOut().setHeader("Header1", "HeaderValue1");
+                })
                 .to("direct:processMessage")
                 .end();
 
         from("direct:processMessage")
                 .log("Init message processing")
-                .log("Processing: ${body}, with header: ${header.Header1}")
+                //.log("Processing: ${body}, with header: ${header.Header1}")
+                .process(exchange -> {
+                    System.out.println(exchange.getIn().getBody());
+                    System.out.println(exchange.getIn().getHeader("Header1"));
+                })
                 .end();
     }
 
